@@ -5,12 +5,17 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon src/index.js"
+    "dev": "supervisor -r dotenv/config --experimental-json-modules src/index.js"
   },
   "author": "Rahul Kapta",
   "license": "ISC",
   "devDependencies": {
-    "nodemon": "^3.1.10",
-    "prettier": "^3.5.3"
+    "prettier": "^3.5.3",
+    "supervisor": "^0.12.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "mongoose": "^8.15.1"
   }
 }
