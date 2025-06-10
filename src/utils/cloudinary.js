@@ -17,13 +17,26 @@ import fs from "fs"
         })
         // file has been uploaded successfull
         // console.log("file is uploaded on cloudinary ", response.url);
-        fs.unlinkSync(localFilePath)
+        // fs.unlinkSync(localFilePath)
+        if (fs.existsSync(localFilePath)) { fs.unlinkSync(localFilePath); } 
         return response;
 
     } catch (error) {
+        console.error("Cloudinary: UPLOAD FAILED! Error details:", error);
         fs.unlinkSync(localFilePath) // remove the locally saved temporary file as the upload operation got failed
         return null;
     }
 }
 
-export {uploadOnCloudinary}
+const deleteFromCloudinary = async (publicId, resourceType) => {
+    try {
+        if (!publicId) return null;
+        const result = await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+        return result;
+    } catch (error) {
+        console.error(`Cloudinary: ERROR deleting asset with public ID ${publicId}:`, error);
+        return null;
+    }
+};
+
+export {uploadOnCloudinary, deleteFromCloudinary}
