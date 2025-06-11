@@ -8,6 +8,8 @@ import {
   deleteFromCloudinary,
   uploadOnCloudinary,
 } from "../utils/cloudinary.js";
+import { Like } from "../models/like.model.js";
+import { Comment } from "../models/comment.model.js";
 
 const getAllVideos = asyncHandler(async (req, res) => {
   // 1. Extract Query Parameters
@@ -157,14 +159,10 @@ const getAllVideos = asyncHandler(async (req, res) => {
 
 const publishAVideo = asyncHandler(async (req, res) => {
   // 1. Get title and description from request body
-  const { title, description, videoPublicId, thumbnailPublicId } = req.body;
+  const { title, description } = req.body;
 
   // 2. Validate title and description
-  if (
-    [title, description, videoPublicId, thumbnailPublicId].some(
-      (field) => !field || field.trim() === ""
-    )
-  ) {
+  if ([title, description].some((field) => !field || field.trim() === "")) {
     throw new ApiError(400, "Title and description are required");
   }
 
@@ -199,9 +197,9 @@ const publishAVideo = asyncHandler(async (req, res) => {
     title,
     description,
     videoFile: videoFile.url,
-    videoPublicId, // Cloudinary URL for the video
+    videoPublicId: videoFile.public_id, // Cloudinary URL for the video
     thumbnail: thumbnail.url,
-    thumbnailPublicId, // Cloudinary URL for the thumbnail
+    thumbnailPublicId: thumbnail.public_id, // Cloudinary URL for the thumbnail
     duration: videoFile.duration, // Cloudinary provides duration for videos
     owner: req.user?._id, // Assuming user information is available in req.user after authentication
     isPublished: true, // Default to true upon publishing
@@ -507,6 +505,15 @@ const deleteVideo = asyncHandler(async (req, res) => {
     await deleteFromCloudinary(videoToDelete.thumbnailPublicId, "image"); // Pass the URL or public_id
   }
 
+  const deletedLikesResult = await Like.deleteMany({ video: videoId });
+  // console.log(
+  //   `Deleted ${deletedLikesResult.deletedCount} likes associated with video ${videoId}`
+  // );
+  const deletedCommentResult = await Comment.deleteMany({ video: videoId });
+  // console.log(
+  //   `Deleted ${deletedCommentResult.deletedCount} comments associated with video ${videoId}`
+  // );
+
   const deletedVideo = await Video.deleteOne({ _id: videoId });
   // console.log(deletedVideo)
   if (deletedVideo.deletedCount === 0) {
@@ -530,7 +537,10 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Video not found");
   }
   if (video.owner.toString() !== req.user?._id.toString()) {
-    throw new ApiError(403, "You are not authorized to perform this action");
+    throw new ApiError(
+      403,
+      "You are not authorized to toggle video publish status."
+    );
   }
   const updatedVideo = await Video.findByIdAndUpdate(
     videoId,
