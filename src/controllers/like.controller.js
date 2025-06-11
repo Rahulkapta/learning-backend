@@ -4,6 +4,7 @@ import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
 import { Video } from "../models/video.model.js"
+import { Comment } from "../models/comment.model.js"
 
 const toggleVideoLike = asyncHandler(async (req, res) => {
     const { videoId } = req.params; // Get the video ID from URL parameters
@@ -72,8 +73,59 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
 })
 
 const toggleCommentLike = asyncHandler(async (req, res) => {
-    const {commentId} = req.params
-    //TODO: toggle like on comment
+    const {commentId} = req.params// Get the video ID from URL parameters
+    const userId = req.user?._id;   // Get the authenticated user's ID from req.user (assuming your auth middleware sets this)
+
+    // --- Input Validation ---
+    // Check if videoId is provided
+    if (!commentId) {
+        throw new ApiError(400, "Comment ID is required");
+    }
+
+    // Validate if videoId is a valid MongoDB ObjectId
+    if (!mongoose.Types.ObjectId.isValid(commentId)) {
+        throw new ApiError(400, "Invalid comment ID provided");
+    }
+    const comment = await Comment.findById(commentId);
+    if (!comment) {
+        throw new ApiError(404, "Video not found");
+    }
+    if (!userId) {
+        throw new ApiError(401, "User not authenticated to like videos");
+    }
+    const existingLike = await Like.findOne({
+        comment: commentId, // Match by the video being liked
+        likedBy: userId,  // Match by the user who is liking
+    });
+
+    let message;
+    let isLiked; // Variable to store the new like status
+
+    if (existingLike) {
+        // If a like document exists, the user is unliking the video
+        await Like.deleteOne({ _id: existingLike._id });
+        message = "comment unliked successfully";
+        isLiked = false;
+    } else {
+        // If no like document exists, the user is liking the video
+        await Like.create({
+            comment: commentId,
+            video : comment.video,
+            likedBy: userId,
+        });
+        message = "comment liked successfully";
+        isLiked = true;
+    }
+
+    // --- Send Response ---
+    // Return a 200 OK response with the new like status and a message
+    return res
+        .status(200)
+        .json(new ApiResponse(
+            200,
+            { isLiked }, // Return the new status of the like
+            message
+        ));
 
 })
 
